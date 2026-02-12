@@ -1,35 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-append_if_missing() {
-  local line="$1"
-  local file="$2"
-
-  if [[ ! -f "$file" ]]; then
-    touch "$file"
-  fi
-
-  if ! grep -Fqx "$line" "$file"; then
-    printf '\n%s\n' "$line" >> "$file"
-  fi
-}
-
 if ! command -v rustup >/dev/null 2>&1; then
-  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+  curl https://sh.rustup.rs -sSf | sh
 fi
 
 if [[ -f "$HOME/.cargo/env" ]]; then
-  # shellcheck source=/dev/null
   source "$HOME/.cargo/env"
 fi
 
 if ! command -v node >/dev/null 2>&1; then
   if [[ ! -d "$HOME/.nvm" ]]; then
-    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
   fi
 
   if [[ -s "$HOME/.nvm/nvm.sh" ]]; then
-    # shellcheck source=/dev/null
     source "$HOME/.nvm/nvm.sh"
   fi
 
@@ -41,7 +26,7 @@ if ! command -v node >/dev/null 2>&1; then
   fi
 fi
 
-# Install usefule command
+# Install useful command
 if ! command -v zoxide >/dev/null 2>&1; then
   cargo install zoxide
 fi
@@ -59,14 +44,28 @@ if [[ ! -d "$HOME/.local/share/bob" ]]; then
   bob use stable
 fi
 
-append_if_missing 'eza --icons' "$HOME/.bashrc"
-append_if_missing 'eza -l --icons --git --group-directories-first --time-style=long-iso' "$HOME/.bashrc"
-append_if_missing 'eza -la --icons --git --group-directories-first --time-style=long-iso' "$HOME/.bashrc"
-append_if_missing 'eza --tree --level=2 --icons' "$HOME/.bashrc"
-append_if_missing 'eval "$(zoxide init bash --cmd cd)"' "$HOME/.bashrc"
-append_if_missing 'export PATH="$HOME/.local/share/bob/nvim-bin:$PATH"' "$HOME/.bashrc"
+# Add aliases and zoxide initialization to shell config
+if [[ "$SHELL" == */zsh ]]; then
+  shell_config="$HOME/.zshrc"
+  zoxide_init="eval \"\$(zoxide init zsh --cmd cd)\""
+else
+  shell_config="$HOME/.bashrc"
+  zoxide_init="eval \"\$(zoxide init bash --cmd cd)\""
+fi
 
+# Add aliases and zoxide init if not already present
+if ! grep -q "alias cat='bat'" "$shell_config" 2>/dev/null; then
+  cat >> "$shell_config" << 'EOF'
 
-printf '\nSetup complete. Restart your shell or run: source ~/.bashrc\n'
+# QuickSetup aliases
+alias cat='bat'
+alias ls='eza --icons'
+alias ll='eza -l --icons --git --group-directories-first --time-style=long-iso'
+alias la='eza -la --icons --git --group-directories-first --time-style=long-iso'
+alias lt='eza --tree --level=2 --icons'
+EOF
+fi
 
-cp .conf/tmux.conf ~/.config/tmux
+if ! grep -q "zoxide init" "$shell_config" 2>/dev/null; then
+  echo "$zoxide_init" >> "$shell_config"
+fi
