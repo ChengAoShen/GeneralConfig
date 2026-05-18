@@ -1,3 +1,2 @@
-# Ubuntu QuickSetup
+# Personal Config File
 
-Personal script to quick setup the Ubuntu server

@@ -1,0 +1,77 @@
+{
+    "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/master/doc/json_schema.json",
+    "display": {
+        "key": {
+            "width": 10
+        },
+        "size": {
+            "binaryPrefix": "jedec"
+        },
+        "separator": ""
+    },
+    "logo": {
+        "type": "iterm",
+        "source": "~/.config/fastfetch/marin.png",
+        "width": 20,
+        "height": 10
+    },
+    "modules": [
+        "break",
+        {
+            "type": "os",
+            "key": "OS",
+            "keyColor": "#59C9F3",
+            "format": "{name}"
+        },
+        {
+            "type": "shell",
+            "key": "Shell",
+            "keyColor": "#EEA3B2",
+            "format": "{pretty-name}"
+        },
+        {
+            "type": "wm",
+            "key": "WM",
+            "keyColor": "white",
+            "format": "{pretty-name}"
+        },
+        {
+            "type": "packages",
+            "key": "Pkgs",
+            "keyColor": "#59C9F3"
+        },
+        {
+            "type": "cpu",
+            "key": "CPU",
+            "keyColor": "#EEA3B2",
+            "format": "{name}"
+        },
+        {
+            "type": "gpu",
+            "key": "GPU",
+            "keyColor": "white",
+            "hideType": "integrated",
+            "format": "{name}"
+        },
+        {
+            "type": "memory",
+            "key": "RAM",
+            "keyColor": "#59C9F3",
+            "format": "{used} / {total}"
+        },
+        {
+            "type": "disk",
+            "key": "Disk",
+            "keyColor": "#EEA3B2",
+            "folders": [
+                "/"
+            ],
+            "format": "{size-used} / {size-total}"
+        },
+        "break",
+        {
+            "type": "custom",
+            "format": "\u001b[38;2;89;201;243m󰮯 \u001b[38;2;238;163;178m󰊠 \u001b[97m󰊠 \u001b[38;2;89;201;243m󰊠 \u001b[38;2;238;163;178m󰊠 \u001b[97m󰊠 \u001b[38;2;89;201;243m󰊠 \u001b[38;2;238;163;178m󰊠"
+        }
+    ]
+}
