@@ -50,7 +50,6 @@
             "type": "gpu",
             "key": "GPU",
             "keyColor": "white",
-            "hideType": "integrated",
             "format": "{name}"
         },
         {

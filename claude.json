@@ -1,32 +1,35 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "theme": "auto",
+  "cleanupPeriodDays": 7,
+  "outputStyle": "Concise",
   "attribution": {
     "commit": "",
-    "pr": ""
+    "pr": "",
+    "sessionUrl": false
   },
   "permissions": {
     "deny": [
-      "Bash(sudo *)",
-      "Bash(rm -rf *)",
-      "Bash(rm -fr *)",
-      "Bash(rm -r -f *)",
-      "Bash(rm -f -r *)",
-      "Bash(rm -Rf *)",
-      "Bash(rm -rf)",
-      "Bash(rm --recursive --force *)",
-      "Bash(rm --force --recursive *)"
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(**/*.pem)",
+      "Read(**/id_rsa)",
+      "Read(**/id_ed25519)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
+      "Bash(rm -rf /)",
+      "Bash(rm -rf /*)",
+      "Bash(rm -rf ~)",
+      "Bash(rm -rf ~/*)"
     ],
     "defaultMode": "bypassPermissions"
   },
-  "model": "claude-opus-4-7",
-  "language": "chinese",
-  "alwaysThinkingEnabled": true,
-  "effortLevel": "high",
-  "autoUpdatesChannel": "latest",
-  "tui": "fullscreen",
-  "showThinkingSummaries": true,
   "skipDangerousModePermissionPrompt": true,
-  "enabledPlugins": {
-    "rust-analyzer-lsp@claude-plugins-official": true
-  }
+  "agentPushNotifEnabled": true,
+  "model": "claude-fable-5-1",
+  "env": {
+    "CLAUDE_CODE_SUBAGENT_MODEL": "sonnet",
+    "CLAUDE_CODE_SUBAGENT_MODEL_FORCE": "1"
+  },
+  "skipWorkflowUsageWarning": true
 }

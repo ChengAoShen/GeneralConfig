@@ -1,96 +1,95 @@
-HISTFILE=~/.zsh_history
+# Generic zsh config shared across machines. Machine-specific
+# blocks (Homebrew, CUDA, TeX Live, Android SDK, WSL) live in
+# the local ~/.zshrc / ~/.zprofile and are deliberately absent.
+
+export EDITOR=nvim VISUAL=nvim
+
+
+# --- PATH ---------------------------------------------------
+# One assignment, highest precedence first.
+
+typeset -U path
+
+path=(
+  $HOME/.local/share/bob/nvim-bin   # bob-managed Neovim
+  $HOME/.cargo/bin                  # cargo-installed binaries
+  $HOME/.local/bin                  # personal scripts
+  $path
+)
+
+
+# --- History ------------------------------------------------
+# Persist 50k commands, shared across sessions, deduped, and
+# skipping anything typed with a leading space.
+
+HISTFILE=${ZDOTDIR:-$HOME}/.zsh_history
 HISTSIZE=50000
 SAVEHIST=50000
-setopt SHARE_HISTORY
-setopt HIST_IGNORE_DUPS
-setopt HIST_IGNORE_ALL_DUPS
-setopt HIST_IGNORE_SPACE
-setopt HIST_REDUCE_BLANKS
-setopt EXTENDED_HISTORY
-setopt INC_APPEND_HISTORY
+setopt SHARE_HISTORY HIST_IGNORE_ALL_DUPS HIST_IGNORE_SPACE \
+       HIST_REDUCE_BLANKS EXTENDED_HISTORY
 
-setopt AUTO_CD
-setopt AUTO_PUSHD
-setopt PUSHD_IGNORE_DUPS
-setopt CORRECT
-setopt INTERACTIVE_COMMENTS
-setopt NO_BEEP
+
+# --- Shell behavior -----------------------------------------
+# Bare directory name cds into it, with a directory stack.
+
+setopt AUTO_CD AUTO_PUSHD PUSHD_IGNORE_DUPS INTERACTIVE_COMMENTS NO_BEEP
+
+
+# --- Completion ---------------------------------------------
+# Selectable menu, case-insensitive matching, grouped sections.
 
 autoload -Uz compinit
 compinit
-
 zstyle ':completion:*' menu select
 zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'
-zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
 zstyle ':completion:*' group-name ''
 zstyle ':completion:*:descriptions' format '%F{yellow}-- %d --%f'
 
-export PATH="$HOME/.local/bin:$PATH"
-export PATH="$HOME/.cargo/bin:$PATH"
-export PATH="$HOME/.local/share/bob/nvim-bin:$PATH"
 
-export EDITOR='nvim'
-export VISUAL='nvim'
-
-export XDG_RUNTIME_DIR='/mnt/wslg/runtime-dir'
-
+# --- Aliases ------------------------------------------------
+# The eza ones chain off `ls`, so its flags are set in one
+# place. `cat` is deliberately left as real cat -- use `c`.
 
 alias ls='eza --icons --group-directories-first'
-alias ll='eza -l --icons --git --group-directories-first'
-alias la='eza -la --icons --git --group-directories-first'
-alias lt='eza --tree --icons --level=2'
-alias lta='eza --tree --icons --level=2 -a'
+alias ll='ls -l --git'
+alias la='ls -la --git'
+alias lt='ls --tree --level=2'
+alias lta='lt -a'
 
-alias cat='bat --paging=never --style=plain'
-alias catp='bat'
+alias c='bat --paging=never --style=plain'
 
 alias ..='cd ..'
 alias ...='cd ../..'
 alias ....='cd ../../..'
+
 alias g='git'
 alias gs='git status'
 alias gd='git diff'
 alias gl='git log --oneline --graph --decorate'
-alias v='nvim'
+
 alias vi='nvim'
 
-alias pi='paru -S'
-alias pr='paru -Rns'
-alias pu='paru -Syu'
-alias ps='paru -Ss'
-alias pq='paru -Q'
-alias po='paru -Qdtq'
 
-alias open='explorer.exe'
+# --- Tool integrations --------------------------------------
+# Starship prompt, zoxide smart cd, fzf. Syntax highlighting
+# must be sourced last. Plugin paths differ by package manager:
+# Homebrew on macOS, /usr/share on Linux.
+
+export _ZO_DOCTOR=0
 
 eval "$(starship init zsh)"
 eval "$(zoxide init --cmd cd zsh)"
-eval "$(fnm env --use-on-cd --shell zsh)"
-
-# TeX Live 2024
-export PATH="/usr/local/texlive/2024/bin/x86_64-linux:$PATH"
-export MANPATH="/usr/local/texlive/2024/texmf-dist/doc/man:$MANPATH"
-export INFOPATH="/usr/local/texlive/2024/texmf-dist/doc/info:$INFOPATH"
-
-# Cuda
-export CUDA_HOME=/opt/cuda
-export PATH=$CUDA_HOME/bin:$PATH
-export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
-
-# Java + Android (for Tauri Android builds)
-export JAVA_HOME=/usr/lib/jvm/java-17-openjdk
-export ANDROID_HOME=/opt/android-sdk
-export ANDROID_SDK_ROOT=$ANDROID_HOME
-export NDK_HOME=/opt/android-ndk
-export ANDROID_NDK_HOME=$NDK_HOME
-export PATH=$PATH:$ANDROID_HOME/platform-tools
-export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin
-export PATH=$PATH:$HOME/.cargo/bin
-
 source <(fzf --zsh)
-source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
-source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+
+for _plugdir in "${HOMEBREW_PREFIX:-/opt/homebrew}/share" /usr/share/zsh/plugins /usr/share; do
+  [[ -f $_plugdir/zsh-autosuggestions/zsh-autosuggestions.zsh ]] || continue
+  source $_plugdir/zsh-autosuggestions/zsh-autosuggestions.zsh
+  source $_plugdir/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+  break
+done
+unset _plugdir
+
+
+# --- Greeting -----------------------------------------------
 
 fastfetch
-
-
