@@ -3,3 +3,7 @@
 *~
 .DS_Store
 Thumbs.db
+
+# Machine-local, never committed: API keys and anything else that
+# only makes sense on one host. Lives at ~/.config/zsh/secrets.zsh.
+secrets.zsh

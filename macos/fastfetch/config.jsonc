@@ -10,7 +10,7 @@
         "separator": ""
     },
     "logo": {
-        "type": "iterm",
+        "type": "kitty-direct",
         "source": "~/.config/fastfetch/marin.png",
         "width": 20,
         "height": 10
@@ -18,59 +18,51 @@
     "modules": [
         "break",
         {
+            "type": "host",
+            "key": "Host",
+            "keyColor": "#CDA843",
+            "format": "{name}"
+        },
+        {
             "type": "os",
             "key": "OS",
-            "keyColor": "#59C9F3",
+            "keyColor": "#555B3C",
             "format": "{name}"
         },
         {
             "type": "shell",
             "key": "Shell",
-            "keyColor": "#EEA3B2",
+            "keyColor": "#984A32",
             "format": "{pretty-name}"
         },
         {
             "type": "wm",
             "key": "WM",
-            "keyColor": "white",
+            "keyColor": "#CDA843",
             "format": "{pretty-name}"
         },
         {
             "type": "packages",
             "key": "Pkgs",
-            "keyColor": "#59C9F3"
-        },
-        {
-            "type": "cpu",
-            "key": "CPU",
-            "keyColor": "#EEA3B2",
-            "format": "{name}"
-        },
-        {
-            "type": "gpu",
-            "key": "GPU",
-            "keyColor": "white",
-            "format": "{name}"
+            "keyColor": "#555B3C"
         },
         {
             "type": "memory",
             "key": "RAM",
-            "keyColor": "#59C9F3",
+            "keyColor": "#984A32",
             "format": "{used} / {total}"
         },
         {
             "type": "disk",
             "key": "Disk",
-            "keyColor": "#EEA3B2",
-            "folders": [
-                "/"
-            ],
+            "keyColor": "#CDA843",
+            "folders": ["/"],
             "format": "{size-used} / {size-total}"
         },
         "break",
         {
             "type": "custom",
-            "format": "\u001b[38;2;89;201;243m󰮯 \u001b[38;2;238;163;178m󰊠 \u001b[97m󰊠 \u001b[38;2;89;201;243m󰊠 \u001b[38;2;238;163;178m󰊠 \u001b[97m󰊠 \u001b[38;2;89;201;243m󰊠 \u001b[38;2;238;163;178m󰊠"
+            "format": "\u001b[38;2;205;168;67m󰮯 \u001b[38;2;85;91;60m󰊠 \u001b[38;2;152;74;50m󰊠 \u001b[38;2;205;168;67m󰊠 \u001b[38;2;85;91;60m󰊠 \u001b[38;2;152;74;50m󰊠 \u001b[38;2;205;168;67m󰊠 \u001b[38;2;85;91;60m󰊠\u001b[0m"
         }
     ]
 }

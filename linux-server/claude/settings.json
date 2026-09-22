@@ -3,6 +3,7 @@
   "theme": "auto",
   "cleanupPeriodDays": 7,
   "outputStyle": "Concise",
+  "language": "chinese",
   "attribution": {
     "commit": "",
     "pr": "",
@@ -16,16 +17,23 @@
       "Read(**/id_rsa)",
       "Read(**/id_ed25519)",
       "Read(~/.ssh/**)",
-      "Read(~/.aws/**)",
+      "Bash(sudo *)",
       "Bash(rm -rf /)",
       "Bash(rm -rf /*)",
       "Bash(rm -rf ~)",
-      "Bash(rm -rf ~/*)"
+      "Bash(rm -rf ~/*)",
+      "Bash(rm -rf /data/cshen20)",
+      "Bash(rm -rf /data/cshen20/*)"
     ],
     "defaultMode": "bypassPermissions"
   },
   "skipDangerousModePermissionPrompt": true,
   "agentPushNotifEnabled": true,
+  "alwaysThinkingEnabled": true,
+  "showThinkingSummaries": true,
+  "effortLevel": "medium",
+  "tui": "fullscreen",
+  "autoUpdatesChannel": "latest",
   "model": "claude-fable-5-1",
   "env": {
     "CLAUDE_CODE_SUBAGENT_MODEL": "sonnet",
