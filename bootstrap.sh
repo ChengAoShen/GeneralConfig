@@ -2,14 +2,14 @@
 #
 # Move configuration between this repo and $HOME.
 #
-#   ./bootstrap.sh workstation install    repo -> $HOME
-#   ./bootstrap.sh server      install
-#   ./bootstrap.sh workstation collect    $HOME -> repo, ready to commit
-#   ./bootstrap.sh server      install --tools     also install the CLI tools
-#   ./bootstrap.sh server      install --dry-run
+#   ./bootstrap.sh install              repo -> $HOME
+#   ./bootstrap.sh collect              $HOME -> repo, ready to commit
+#   ./bootstrap.sh install --tools      also install the CLI tools
+#   ./bootstrap.sh install --dry-run
 #
-# Which machine this is has to be said out loud: uname cannot
-# tell a laptop from a Mac being used as a server.
+# mac/ or linux/ is chosen by uname. The split is along the one
+# line that actually matters: Homebrew exists on one side of it
+# and not the other.
 #
 # Files are copied, not linked. What lives at ~/.config/zsh/.zshrc
 # is a real file you can edit in place like any other; the repo is
@@ -19,25 +19,24 @@
 set -euo pipefail
 
 REPO=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-KIND=
 MODE=install
 DRY_RUN=0
 WITH_TOOLS=0
 
 for arg in "$@"; do
   case $arg in
-    workstation|server) KIND=$arg ;;
-    install|collect)    MODE=$arg ;;
+    install|collect) MODE=$arg ;;
     --dry-run) DRY_RUN=1 ;;
     --tools)   WITH_TOOLS=1 ;;
     *) echo "unknown argument: $arg" >&2; exit 2 ;;
   esac
 done
 
-if [[ -z $KIND ]]; then
-  echo "usage: $0 {workstation|server} [install|collect] [--tools] [--dry-run]" >&2
-  exit 2
-fi
+case "$(uname -s)" in
+  Darwin) KIND=mac ;;
+  Linux)  KIND=linux ;;
+  *) echo "unsupported platform: $(uname -s)" >&2; exit 1 ;;
+esac
 
 CHANGED=0
 
@@ -63,7 +62,7 @@ tmux.conf                 .config/tmux/tmux.conf
 claude-settings.json      .claude/settings.json
 "
 
-if [[ $KIND == workstation ]]; then
+if [[ $KIND == mac ]]; then
   FILES="$FILES
 zprofile                  .config/zsh/.zprofile
 fastfetch/config.jsonc    .config/fastfetch/config.jsonc
@@ -133,10 +132,10 @@ else
 fi
 
 # --- zsh plugins -------------------------------------------------------
-# Homebrew ships these on a workstation; the server has no root,
-# so they are a plain clone.
+# Homebrew ships these on macOS; the GPU box has no root, so
+# they are a plain clone.
 
-if [[ $KIND == server ]]; then
+if [[ $KIND == linux ]]; then
   PLUGIN_DIR=$HOME/.local/share/zsh/plugins
   for repo in zsh-users/zsh-autosuggestions zsh-users/zsh-syntax-highlighting; do
     name=${repo##*/}
@@ -151,14 +150,14 @@ if [[ $KIND == server ]]; then
 fi
 
 # --- Tool shims --------------------------------------------------------
-# No root on the server, so the CLI tools come from conda. Only the
+# No root on the lab box, so the CLI tools come from conda. Only the
 # wanted binaries are exposed: that environment also carries its own
 # openssl and a full set of ncurses utilities, which have no business
 # shadowing the system ones.
 
 TOOLS="zsh starship fzf bat fd delta tmux gh btop atuin just direnv"
 
-if [[ $KIND == server && -d $HOME/micromamba/envs/tools/bin ]]; then
+if [[ $KIND == linux && -d $HOME/micromamba/envs/tools/bin ]]; then
   TOOLS_BIN=$HOME/micromamba/envs/tools/bin
   SHIM_DIR=$HOME/.local/share/tools/bin
   [[ -d $SHIM_DIR ]] || run mkdir -p "$SHIM_DIR"
@@ -184,7 +183,7 @@ fi
 
 if (( WITH_TOOLS )); then
   echo "==> tools"
-  if [[ $KIND == workstation ]]; then
+  if [[ $KIND == mac ]]; then
     run brew install \
       zsh-autosuggestions zsh-syntax-highlighting starship fzf bat fd \
       eza ripgrep git-delta gh lazygit btop just direnv tmux \
@@ -207,7 +206,7 @@ echo "==> done"
 
 # --- The one thing left by hand ----------------------------------------
 
-if [[ $KIND == server ]] && ! grep -q 'exec "$__zsh"' "$HOME/.bashrc" 2>/dev/null; then
+if [[ $KIND == linux ]] && ! grep -q 'exec "$__zsh"' "$HOME/.bashrc" 2>/dev/null; then
   cat <<'EOF'
 
   zsh is not the login shell yet. chsh only accepts shells listed

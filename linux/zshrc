@@ -1,6 +1,7 @@
-# Shared lab GPU box: no root, eight cards, a home directory on
-# the same volume as everyone else's, and a separate /data NVMe.
-# Everything below follows from one of those.
+# Linux, which for me means the shared lab GPU box: no root, eight
+# cards, a home directory on the same volume as everyone else's,
+# and a separate /data NVMe. Most of what is unusual below follows
+# from one of those.
 
 export EDITOR=nvim VISUAL=nvim
 
@@ -27,17 +28,20 @@ path=(
 
 
 # --- Caches -------------------------------------------------
-# $HOME shares a 1.8T root volume with the rest of the lab while
-# /data has its own 14T NVMe, so anything that grows without
-# bound lives there. ~/.cache is a symlink to the same place.
+# On the lab GPU box $HOME shares a 1.8T root volume with
+# everyone else while /data has its own 14T NVMe, so anything
+# that grows without bound lives there, and ~/.cache is a symlink
+# to the same place. Guarded: not every Linux machine has /data.
 
-export XDG_CACHE_HOME=/data/cshen20/cache
+if [[ -d /data/$USER ]]; then
+  export XDG_CACHE_HOME=/data/$USER/cache
 
-export HF_HOME=$XDG_CACHE_HOME/huggingface
-export TORCH_HOME=$XDG_CACHE_HOME/torch
-export UV_CACHE_DIR=$XDG_CACHE_HOME/uv
-export PIP_CACHE_DIR=$XDG_CACHE_HOME/pip
-export TRITON_CACHE_DIR=$XDG_CACHE_HOME/triton
+  export HF_HOME=$XDG_CACHE_HOME/huggingface
+  export TORCH_HOME=$XDG_CACHE_HOME/torch
+  export UV_CACHE_DIR=$XDG_CACHE_HOME/uv
+  export PIP_CACHE_DIR=$XDG_CACHE_HOME/pip
+  export TRITON_CACHE_DIR=$XDG_CACHE_HOME/triton
+fi
 
 
 # --- Research environments ----------------------------------
