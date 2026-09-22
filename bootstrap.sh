@@ -1,154 +1,99 @@
 #!/usr/bin/env bash
 #
-# Move configuration between this repo and $HOME. Files are
-# copied, not linked: what lives at ~/.config/zsh/.zshrc is a
-# real file you can edit in place like any other.
+# Move configuration between this repo and $HOME.
 #
-#   ./bootstrap.sh install    repo -> $HOME  (default)
-#   ./bootstrap.sh collect    $HOME -> repo, ready to commit
-#   ./bootstrap.sh install --tools
-#   ./bootstrap.sh install --dry-run
+#   ./bootstrap.sh workstation install    repo -> $HOME
+#   ./bootstrap.sh server      install
+#   ./bootstrap.sh workstation collect    $HOME -> repo, ready to commit
+#   ./bootstrap.sh server      install --tools     also install the CLI tools
+#   ./bootstrap.sh server      install --dry-run
 #
-# Either direction copies only what actually differs, so a run
-# that changes nothing says so.
+# Which machine this is has to be said out loud: uname cannot
+# tell a laptop from a Mac being used as a server.
+#
+# Files are copied, not linked. What lives at ~/.config/zsh/.zshrc
+# is a real file you can edit in place like any other; the repo is
+# where changes are kept and carried between machines, not where
+# they live.
 
 set -euo pipefail
 
 REPO=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+KIND=
 MODE=install
 DRY_RUN=0
 WITH_TOOLS=0
 
 for arg in "$@"; do
   case $arg in
-    install|collect) MODE=$arg ;;
+    workstation|server) KIND=$arg ;;
+    install|collect)    MODE=$arg ;;
     --dry-run) DRY_RUN=1 ;;
     --tools)   WITH_TOOLS=1 ;;
     *) echo "unknown argument: $arg" >&2; exit 2 ;;
   esac
 done
 
-CHANGED=0
-# mkdir -p is idempotent, but in --dry-run nothing is created, so
-# the same directory would otherwise be reported once per file.
-# A plain string, not an associative array: macOS ships bash 3.2.
-MADE_DIRS=
+if [[ -z $KIND ]]; then
+  echo "usage: $0 {workstation|server} [install|collect] [--tools] [--dry-run]" >&2
+  exit 2
+fi
 
-ensure_dir() {
-  local d=$1
-  [[ -d $d ]] && return 0
-  case " $MADE_DIRS " in *" $d "*) return 0 ;; esac
-  MADE_DIRS="$MADE_DIRS $d"
-  run mkdir -p "$d"
-}
+CHANGED=0
+
+# bash 4.3+ tilde-expands the replacement in ${var/#pat/~}, which
+# would print the full path back; do the substitution by hand.
+tilde() { case $1 in "$HOME"/*) printf '~%s' "${1#$HOME}" ;; *) printf '%s' "$1" ;; esac; }
 
 info() { printf '  %s\n' "$*"; CHANGED=1; }
 warn() { printf '  ! %s\n' "$*" >&2; }
 run()  { if (( DRY_RUN )); then printf '  $ %s\n' "$*"; else "$@"; fi; }
-tilde() { printf '~%s' "${1#$HOME}"; }
 
-case "$(uname -s)" in
-  Darwin) HOST_DIR=macos ;;
-  Linux)  HOST_DIR=linux-server ;;
-  *) echo "unsupported platform: $(uname -s)" >&2; exit 1 ;;
-esac
+echo "==> $KIND $MODE   repo: $REPO"
 
-echo "==> $MODE   host: $HOST_DIR   repo: $REPO"
+# --- The file list -----------------------------------------------------
+# "<path in repo>  <path in $HOME>", one per line. This is the whole
+# mapping; there is nothing assembled or generated anywhere else.
 
-# --- One file, either direction ----------------------------------------
-# An old install linked these instead of copying them; a leftover
-# symlink is replaced rather than written through.
+FILES="
+zshenv                    .zshenv
+zshrc                     .config/zsh/.zshrc
+starship.toml             .config/starship.toml
+tmux.conf                 .config/tmux/tmux.conf
+claude-settings.json      .claude/settings.json
+"
 
-sync_file() {
-  local from=$1 to=$2
-  [[ -e $from ]] || return 0
+if [[ $KIND == workstation ]]; then
+  FILES="$FILES
+zprofile                  .config/zsh/.zprofile
+fastfetch/config.jsonc    .config/fastfetch/config.jsonc
+fastfetch/marin.png       .config/fastfetch/marin.png
+"
+fi
 
-  if [[ -L $to ]]; then
-    run rm -f "$to"
-    info "$(tilde "$to") was a symlink, replacing with a real file"
-  elif cmp -s "$from" "$to"; then
-    return 0
+# An older layout linked these instead of copying them, and put
+# tmux.conf at the path tmux prefers, where it would still win.
+for stale in "$HOME/.tmux.conf" "$HOME/.config/zsh/conf.d"; do
+  if [[ $MODE == install && -e $stale ]]; then
+    run rm -rf "$stale"
+    info "removed $(tilde "$stale"), left over from the old layout"
   fi
+done
 
-  ensure_dir "$(dirname "$to")"
+while read -r src dest; do
+  [[ -n $src ]] || continue
+  from=$REPO/$KIND/$src
+  to=$HOME/$dest
+  [[ $MODE == collect ]] && { tmp=$from; from=$to; to=$tmp; }
+
+  [[ -e $from ]] || { [[ $MODE == install ]] && warn "missing in repo: $KIND/$src"; continue; }
+  [[ -L $to ]] && run rm -f "$to"
+  cmp -s "$from" "$to" 2>/dev/null && continue
+
+  [[ -d $(dirname "$to") ]] || run mkdir -p "$(dirname "$to")"
   run cp "$from" "$to"
   info "$(tilde "$to")"
-}
-
-# In install mode arguments read repo -> home; collect flips them,
-# and skips anything the machine does not actually have.
-
-place() {
-  local src=$REPO/$1 dest=$2
-  if [[ $MODE == install ]]; then
-    sync_file "$src" "$dest"
-  else
-    [[ -e $dest ]] && sync_file "$dest" "$src"
-  fi
-  return 0
-}
-
-place "common/zsh/.zshenv"    "$HOME/.zshenv"
-place "common/zsh/.zshrc"     "$HOME/.config/zsh/.zshrc"
-place "common/starship.toml"  "$HOME/.config/starship.toml"
-place "common/tmux/tmux.conf" "$HOME/.config/tmux/tmux.conf"
-place "$HOST_DIR/claude/settings.json" "$HOME/.claude/settings.json"
-
-[[ -e $REPO/$HOST_DIR/zsh/.zprofile || $MODE == collect ]] &&
-  place "$HOST_DIR/zsh/.zprofile" "$HOME/.config/zsh/.zprofile"
-
-[[ -e $REPO/$HOST_DIR/tmux/local.conf || $MODE == collect ]] &&
-  place "$HOST_DIR/tmux/local.conf" "$HOME/.config/tmux/local.conf"
-
-if [[ -d $REPO/$HOST_DIR/fastfetch ]]; then
-  for f in "$REPO/$HOST_DIR"/fastfetch/*; do
-    place "$HOST_DIR/fastfetch/${f##*/}" "$HOME/.config/fastfetch/${f##*/}"
-  done
-fi
-
-# tmux reads ~/.tmux.conf before ~/.config/tmux/tmux.conf, so a
-# leftover from the old layout would silently win.
-if [[ $MODE == install && -f $HOME/.tmux.conf && -f $HOME/.config/tmux/tmux.conf ]]; then
-  run rm -f "$HOME/.tmux.conf"
-  info "removed ~/.tmux.conf, superseded by ~/.config/tmux/tmux.conf"
-fi
-
-# --- conf.d ------------------------------------------------------------
-# Assembled from common/ and one host directory. Since the copies
-# carry no trace of where they came from, the names this script
-# wrote last time are recorded, and a fragment that has since been
-# renamed or moved is removed on the next run.
-
-CONF_D=$HOME/.config/zsh/conf.d
-MANIFEST=$CONF_D/.installed
-
-if [[ $MODE == install ]]; then
-  ensure_dir "$CONF_D"
-
-  wanted=()
-  for frag in "$REPO"/common/zsh/conf.d/*.zsh "$REPO/$HOST_DIR"/zsh/conf.d/*.zsh; do
-    [[ -e $frag ]] || continue
-    wanted+=("${frag##*/}")
-    sync_file "$frag" "$CONF_D/${frag##*/}"
-  done
-
-  if [[ -f $MANIFEST ]]; then
-    while read -r name; do
-      [[ -n $name ]] || continue
-      [[ " ${wanted[*]} " == *" $name "* ]] && continue
-      [[ -e $CONF_D/$name ]] || continue
-      run rm -f "$CONF_D/$name"
-      info "removed $name, no longer in the repo"
-    done < "$MANIFEST"
-  fi
-
-  (( DRY_RUN )) || printf '%s\n' "${wanted[@]}" > "$MANIFEST"
-else
-  for frag in "$REPO"/common/zsh/conf.d/*.zsh "$REPO/$HOST_DIR"/zsh/conf.d/*.zsh; do
-    [[ -e $frag ]] || continue
-    [[ -e $CONF_D/${frag##*/} ]] && sync_file "$CONF_D/${frag##*/}" "$frag"
-  done
-fi
+done <<< "$FILES"
 
 if [[ $MODE == collect ]]; then
   (( CHANGED )) || echo "  nothing to collect"
@@ -157,26 +102,41 @@ if [[ $MODE == collect ]]; then
 fi
 
 # --- Secrets -----------------------------------------------------------
+# Kept out of the repo, and out of .zshrc, which collect would
+# copy straight into a commit.
 
 SECRETS=$HOME/.config/zsh/secrets.zsh
 if [[ ! -e $SECRETS ]]; then
   if (( DRY_RUN )); then
-    info "would create $(tilde "$SECRETS")"
+    info "would create ~/.config/zsh/secrets.zsh"
   else
     mkdir -p "$(dirname "$SECRETS")"
-    cat > "$SECRETS" <<'EOF'
-# Machine-local, never committed. Export API keys and anything
-# else that belongs to this host only.
-EOF
+    printf '%s\n' \
+      '# Machine-local, never committed. Export API keys and' \
+      '# anything else that belongs to this host only.' > "$SECRETS"
     chmod 600 "$SECRETS"
-    info "created $(tilde "$SECRETS")"
+    info "created ~/.config/zsh/secrets.zsh"
   fi
 fi
 
-# --- zsh plugins -------------------------------------------------------
-# Homebrew ships these on macOS; everywhere else they are a clone.
+# --- Neovim ------------------------------------------------------------
+# Its own repo, not a copy of anything kept here.
 
-if [[ $HOST_DIR != macos ]]; then
+NVIM_REPO=https://github.com/ChengAoShen/nvim
+if [[ -d $HOME/.config/nvim/.git ]]; then
+  run git -C "$HOME/.config/nvim" pull --quiet --ff-only
+elif [[ -e $HOME/.config/nvim ]]; then
+  warn "~/.config/nvim exists but is not a git clone; leaving it alone"
+else
+  run git clone --quiet "$NVIM_REPO" "$HOME/.config/nvim"
+  info "cloned nvim config"
+fi
+
+# --- zsh plugins -------------------------------------------------------
+# Homebrew ships these on a workstation; the server has no root,
+# so they are a plain clone.
+
+if [[ $KIND == server ]]; then
   PLUGIN_DIR=$HOME/.local/share/zsh/plugins
   for repo in zsh-users/zsh-autosuggestions zsh-users/zsh-syntax-highlighting; do
     name=${repo##*/}
@@ -191,19 +151,19 @@ if [[ $HOST_DIR != macos ]]; then
 fi
 
 # --- Tool shims --------------------------------------------------------
-# No root on the Linux box, so the CLI tools come from conda. Only
-# the wanted binaries are exposed: that environment also carries
-# its own openssl and a full set of ncurses utilities, which have
-# no business shadowing the system ones.
+# No root on the server, so the CLI tools come from conda. Only the
+# wanted binaries are exposed: that environment also carries its own
+# openssl and a full set of ncurses utilities, which have no business
+# shadowing the system ones.
 
-TOOL_BINS=(zsh starship fzf bat fd delta tmux gh btop atuin just direnv)
+TOOLS="zsh starship fzf bat fd delta tmux gh btop atuin just direnv"
 
-if [[ $HOST_DIR != macos && -d $HOME/micromamba/envs/tools/bin ]]; then
+if [[ $KIND == server && -d $HOME/micromamba/envs/tools/bin ]]; then
   TOOLS_BIN=$HOME/micromamba/envs/tools/bin
   SHIM_DIR=$HOME/.local/share/tools/bin
-  ensure_dir "$SHIM_DIR"
+  [[ -d $SHIM_DIR ]] || run mkdir -p "$SHIM_DIR"
 
-  for b in "${TOOL_BINS[@]}"; do
+  for b in $TOOLS; do
     if [[ ! -x $TOOLS_BIN/$b ]]; then
       warn "not installed in the tools env: $b"
     elif [[ $(readlink "$SHIM_DIR/$b" 2>/dev/null) != "$TOOLS_BIN/$b" ]]; then
@@ -214,28 +174,27 @@ if [[ $HOST_DIR != macos && -d $HOME/micromamba/envs/tools/bin ]]; then
 
   for existing in "$SHIM_DIR"/*; do
     [[ -L $existing ]] || continue
-    name=${existing##*/}
-    [[ " ${TOOL_BINS[*]} " == *" $name "* ]] && continue
+    case " $TOOLS " in *" ${existing##*/} "*) continue ;; esac
     run rm -f "$existing"
-    info "removed shim $name"
+    info "removed shim ${existing##*/}"
   done
 fi
 
-# --- Tools -------------------------------------------------------------
+# --- Installing the tools themselves -----------------------------------
 
 if (( WITH_TOOLS )); then
   echo "==> tools"
-  if [[ $HOST_DIR == macos ]]; then
+  if [[ $KIND == workstation ]]; then
     run brew install \
       zsh-autosuggestions zsh-syntax-highlighting starship fzf bat fd \
-      eza ripgrep git-delta gh lazygit btop atuin just direnv tmux \
+      eza ripgrep git-delta gh lazygit btop just direnv tmux \
       fastfetch zoxide uv neovim
   else
     MAMBA=${MAMBA_EXE:-$HOME/bin/micromamba}
     if [[ -x $MAMBA ]]; then
       run "$MAMBA" create -y -n tools -c conda-forge \
         zsh starship fzf bat fd-find git-delta tmux gh btop atuin just direnv
-      echo "   re-run bootstrap.sh to refresh the shims"
+      echo "   re-run without --tools to refresh the shims"
     else
       warn "micromamba not found at $MAMBA; skipping"
     fi
@@ -246,7 +205,9 @@ fi
 (( CHANGED )) || echo "  already up to date"
 echo "==> done"
 
-if [[ $HOST_DIR != macos ]] && ! grep -q 'exec "$__zsh"' "$HOME/.bashrc" 2>/dev/null; then
+# --- The one thing left by hand ----------------------------------------
+
+if [[ $KIND == server ]] && ! grep -q 'exec "$__zsh"' "$HOME/.bashrc" 2>/dev/null; then
   cat <<'EOF'
 
   zsh is not the login shell yet. chsh only accepts shells listed
